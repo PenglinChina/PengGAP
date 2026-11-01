@@ -1,0 +1,23 @@
+# ---- Build output ----
+[Bb]in/
+[Oo]bj/
+publish/
+
+# ---- Runtime generated (contains the CA private key - never commit) ----
+cacert/
+logs/
+dnsendpoints.json
+dnscrypt-proxy/
+
+# ---- Leftover files ----
+*.old
+
+# ---- IDE / tooling ----
+.vs/
+*.user
+*.suo
+
+# ---- OS ----
+Thumbs.db
+desktop.ini
+.DS_Store

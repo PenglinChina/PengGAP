@@ -1,0 +1,80 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<AssemblyName>penggap</AssemblyName>
+		<OutputType>Exe</OutputType>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>..\PengGAP.UI\app.ico</ApplicationIcon>
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+		<PackageReference Include="Serilog.Sinks.Network" Version="3.0.0" />
+		<ProjectReference Include="..\PengGAP.DomainResolve\PengGAP.DomainResolve.csproj" />
+		<ProjectReference Include="..\PengGAP.HttpServer\PengGAP.HttpServer.csproj" />
+		<ProjectReference Include="..\PengGAP.PacketIntercept\PengGAP.PacketIntercept.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+		<PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+		<PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- 显式提升传递依赖到已修复漏洞的版本（GHSA-hh2w-p6rv-4g7w） -->
+		<PackageReference Include="System.Text.Json" Version="8.0.6" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- 随程序分发时必须保留的许可声明；dnscrypt-proxy 的 LICENSE 由 @dnscrypt-proxy 通配符自动复制 -->
+		<None Include="../README.md" Link="README.md">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Include="../LICENSE" Link="LICENSE">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="appsettings/appsettings.*.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Properties\" />
+	</ItemGroup>
+
+	<!--
+		发布后清理 Web SDK 自动带出、但本程序完全不使用的文件：
+		aspnetcorev2_inprocess.dll 是 IIS 进程内托管的垫片
+		*.staticwebassets.endpoints.json 是静态资源清单
+		两者共约 375 KB，删掉不影响任何功能
+	-->
+	<!--
+		配置绑定完全依赖反射：PengGAP.Configuration 里的 DomainConfig、PengGAPOptions、
+		ResponseConfig 的 setter 被裁剪器删掉后，所有域名配置会静默退化成默认值
+		（TlsSni / TlsIgnoreNameMismatch / Destination / Response 全部失效）。
+		因此把整个配置程序集作为裁剪根保留。
+	-->
+	<ItemGroup>
+		<TrimmerRootAssembly Include="PengGAP.Configuration" />
+	</ItemGroup>
+
+	<Target Name="RemoveUnusedWebArtifacts" AfterTargets="Publish">
+		<ItemGroup>
+			<_UnusedWebArtifact Include="$(PublishDir)aspnetcorev2_inprocess.dll" />
+			<_UnusedWebArtifact Include="$(PublishDir)*.staticwebassets.endpoints.json" />
+		</ItemGroup>
+		<Delete Files="@(_UnusedWebArtifact)" />
+	</Target>
+
+</Project>

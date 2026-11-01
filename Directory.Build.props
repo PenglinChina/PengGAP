@@ -1,0 +1,23 @@
+<Project>
+	<PropertyGroup>
+		<Version>0.00.001</Version>
+		<Product>PengGAP</Product>
+		<Nullable>enable</Nullable>
+		<TargetFramework>net8.0</TargetFramework>
+		<IsWebConfigTransformDisabled>true</IsWebConfigTransformDisabled>
+		<Description>PengGAP —— GitHub 访问加速工具，衍生自 FastGithub 2.1.5</Description>
+		<Copyright>PengGAP (derived from FastGithub, https://github.com/dotnetcore/FastGithub, MIT)</Copyright>
+	</PropertyGroup>
+
+	<!--
+		RuntimeIdentifier 不再全局固定，原因：
+		1) 全局 RID 会让 net48 的 PengGAP.UI 也被推断成 win-x64，触发 NETSDK1201 与 NETSDK1047；
+		2) net8 起 RID 不再隐含 SelfContained，发布时必须显式传 self-contained 参数（publish.cmd 已传）。
+		跨平台产物请用 publish.cmd 里的 -r 参数指定。
+	-->
+
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+	</PropertyGroup>
+</Project>

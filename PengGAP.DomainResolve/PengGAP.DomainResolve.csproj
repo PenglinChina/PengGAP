@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  
+	<PropertyGroup>
+		<!-- 普通 build 没有 RuntimeIdentifier，默认按 win-x64 复制 dnscrypt-proxy；发布时自动跟随 -r 参数 -->
+		<DnscryptProxyRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</DnscryptProxyRid>
+		<DnscryptProxyRid Condition="'$(DnscryptProxyRid)' == ''">win-x64</DnscryptProxyRid>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="PInvoke.AdvApi32" Version="0.7.124" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+		<PackageReference Include="DNS" Version="7.0.0" />
+		<ProjectReference Include="..\PengGAP.Configuration\PengGAP.Configuration.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="../@dnscrypt-proxy/*" Link="dnscrypt-proxy/%(Filename)%(Extension)">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Include="../@dnscrypt-proxy/$(DnscryptProxyRid)/*" Link="dnscrypt-proxy/%(Filename)%(Extension)">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+</Project>

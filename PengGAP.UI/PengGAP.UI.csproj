@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<UseWPF>true</UseWPF>
+		<UseWindowsForms>true</UseWindowsForms>
+		<OutputType>WinExe</OutputType>
+		<LangVersion>8.0</LangVersion> 
+		<TargetFramework>net48</TargetFramework>
+		<ApplicationIcon>app.ico</ApplicationIcon>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<AutoGenerateBindingRedirects>False</AutoGenerateBindingRedirects>
+		<StartupObject></StartupObject>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Remove="Resource\*.*" />
+		<Resource Include="Resource\*.*" />
+	</ItemGroup> 
+
+	<ItemGroup>
+		<Reference Include="System.Net.Http" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- 让 net48 项目在没装 Visual Studio / .NET Framework 4.8 Developer Pack 的机器上也能编译 -->
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="LiveCharts.Wpf" Version="0.9.7">
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.1">
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+	</ItemGroup>
+
+</Project>
