@@ -132,7 +132,17 @@ namespace PengGAP.Http
         private async ValueTask<Stream> ConnectAsync(SocketsHttpConnectionContext context, IPEndPoint ipEndPoint, CancellationToken cancellationToken)
         {
             var socket = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            await socket.ConnectAsync(ipEndPoint, cancellationToken);
+            try
+            {
+                await socket.ConnectAsync(ipEndPoint, cancellationToken);
+            }
+            catch (Exception)
+            {
+                // 连接失败必须显式释放，否则每个失败的候选 IP 都会漏一个 socket
+                socket.Dispose();
+                throw;
+            }
+
             var stream = new NetworkStream(socket, ownsSocket: true);
 
             var requestContext = context.InitialRequestMessage.GetRequestContext();
@@ -143,13 +153,23 @@ namespace PengGAP.Http
 
             var tlsSniValue = requestContext.TlsSniValue.WithIPAddress(ipEndPoint.Address);
             var sslStream = new SslStream(stream, leaveInnerStreamOpen: false);
-            await sslStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+            try
             {
-                TargetHost = tlsSniValue.Value,
-                RemoteCertificateValidationCallback = ValidateServerCertificate
-            }, cancellationToken);
+                await sslStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+                {
+                    TargetHost = tlsSniValue.Value,
+                    RemoteCertificateValidationCallback = ValidateServerCertificate
+                }, cancellationToken);
 
-            return sslStream;
+                return sslStream;
+            }
+            catch (Exception)
+            {
+                // 握手失败要显式释放：SslStream 会连带关闭内层 NetworkStream 与 socket，
+                // 否则只能等终结器回收
+                await sslStream.DisposeAsync();
+                throw;
+            }
 
             // 验证证书有效性
             bool ValidateServerCertificate(object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors errors)
@@ -159,7 +179,9 @@ namespace PengGAP.Http
                     return true;
                 }
 
-                if (errors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
+                // 只放宽"纯粹的名称不匹配"：若同时含链校验错误（自签名/过期/签名无效），
+                // 说明对端证书本身不可信，必须拒绝；否则 TlsIgnoreNameMismatch 会把链错误一并放过
+                if (errors == SslPolicyErrors.RemoteCertificateNameMismatch)
                 {
                     if (this.domainConfig.TlsIgnoreNameMismatch == true)
                     {
@@ -177,8 +199,9 @@ namespace PengGAP.Http
                     return false;
                 }
 
-                // 非名称不匹配类错误（如链校验失败）：TlsIgnoreNameMismatch 无法放行
-                this.LogCertificateRejected(context, ipEndPoint, tlsSniValue, errors, "not-name-mismatch", cert, chain);
+                // 其余情况（仅链校验失败，或链校验失败 + 名称不匹配）：TlsIgnoreNameMismatch 无法放行
+                var reason = errors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) == true ? "chain-error" : "not-name-mismatch";
+                this.LogCertificateRejected(context, ipEndPoint, tlsSniValue, errors, reason, cert, chain);
                 return false;
             }
         }

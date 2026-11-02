@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 
 namespace PengGAP.Configuration
@@ -39,6 +39,12 @@ namespace PengGAP.Configuration
         /// 格式为相对或绝对uri
         /// </summary>
         public Uri? Destination { get; init; }
+
+        /// <summary>
+        /// 获取是否优先使用IPv4
+        /// 某些 CDN 的 IPv6 路径建连快但传输慢，可对这些域名优先 IPv4
+        /// </summary>
+        public bool PreferIPv4 { get; init; }
 
         /// <summary>
         /// 自定义响应

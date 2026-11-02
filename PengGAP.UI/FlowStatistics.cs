@@ -1,3 +1,5 @@
+using System;
+
 namespace PengGAP.UI
 {
     /// <summary>
@@ -24,6 +26,16 @@ namespace PengGAP.UI
         /// 获取下行速率
         /// </summary>
         public double WriteRate { get; set; }
+
+        /// <summary>
+        /// 获取根证书是否已被系统信任
+        /// </summary>
+        public bool CertTrusted { get; set; } = true;
+
+        /// <summary>
+        /// 获取根证书到期时间
+        /// </summary>
+        public DateTimeOffset? CertNotAfter { get; set; }
 
 
         /// <summary>

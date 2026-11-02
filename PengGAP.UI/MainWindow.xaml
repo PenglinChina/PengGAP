@@ -1,4 +1,4 @@
-﻿<Window x:Class="PengGAP.UI.MainWindow"
+<Window x:Class="PengGAP.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -153,6 +153,12 @@
             <TabItem Style="{StaticResource TabItemExWithUnderLineStyle}" Header="日志" Height="40" Width="60" Margin="5 0" FontSize="18">
                 <Grid Background="#f7f7f7">
                     <local:UdpLogListBox/>
+                </Grid>
+            </TabItem>
+
+            <TabItem Style="{StaticResource TabItemExWithUnderLineStyle}" Header="证书" Height="40" Width="60" Margin="5 0" FontSize="18">
+                <Grid Background="#f7f7f7">
+                    <local:CertListBox/>
                 </Grid>
             </TabItem>
 

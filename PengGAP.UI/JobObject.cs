@@ -17,7 +17,7 @@ namespace PengGAP.UI
         private const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string lpName);
+        private static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string? lpName);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool SetInformationJobObject(IntPtr hJob, int jobObjectInfoClass, IntPtr lpJobObjectInfo, uint cbJobObjectInfoLength);

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using PengGAP.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -30,14 +31,17 @@ namespace PengGAP.DomainResolve
         private readonly IMemoryCache addressElapsedCache = new MemoryCache(Options.Create(new MemoryCacheOptions()));
 
         private readonly DnsClient dnsClient;
+        private readonly PengGAPConfig pengGapConfig;
 
         /// <summary>
         /// IP服务
         /// </summary>
         /// <param name="dnsClient"></param>
-        public IPAddressService(DnsClient dnsClient)
+        /// <param name="pengGapConfig"></param>
+        public IPAddressService(DnsClient dnsClient, PengGAPConfig pengGapConfig)
         {
             this.dnsClient = dnsClient;
+            this.pengGapConfig = pengGapConfig;
         }
 
         /// <summary>
@@ -85,11 +89,22 @@ namespace PengGAP.DomainResolve
             var addressElapsedTasks = ipEndPoints.Select(item => this.GetAddressElapsedAsync(item, cancellationToken));
             var addressElapseds = await Task.WhenAll(addressElapsedTasks);
 
-            return addressElapseds
+            var ordered = addressElapseds
                 .Where(item => item.Elapsed < TimeSpan.MaxValue)
                 .OrderBy(item => item.Elapsed)
-                .Select(item => item.Address)
                 .ToArray();
+
+            // 部分 CDN 的 IPv6 路径"建连快、传输慢"，对这些域名按配置把 IPv4 排到前面；
+            // OrderBy 是稳定排序，同族内仍保持时延顺序
+            if (this.pengGapConfig.TryGetDomainConfig(dnsEndPoint.Host, out var domainConfig) == true &&
+                domainConfig.PreferIPv4 == true)
+            {
+                ordered = ordered
+                    .OrderBy(item => item.Address.AddressFamily == AddressFamily.InterNetwork ? 0 : 1)
+                    .ToArray();
+            }
+
+            return ordered.Select(item => item.Address).ToArray();
         }
 
 
@@ -103,7 +118,8 @@ namespace PengGAP.DomainResolve
         {
             if (this.addressElapsedCache.TryGetValue<AddressElapsed>(endPoint, out var addressElapsed))
             {
-                return addressElapsed;
+                // 取到即为有效值，命中缓存时不存在 null
+                return addressElapsed!;
             }
 
             var stopWatch = Stopwatch.StartNew();

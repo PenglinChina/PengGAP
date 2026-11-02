@@ -1,4 +1,4 @@
-﻿using PengGAP.Configuration;
+using PengGAP.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Win32;
@@ -80,12 +80,29 @@ namespace PengGAP.PacketIntercept.Dns
                 return;
             }
 
-            var items = this.options.Value.DomainConfigs.Keys.ToHashSet();
-            foreach (var item in GetProxyOvride(settings))
+            var configKeys = new HashSet<string>(this.options.Value.DomainConfigs.Keys, StringComparer.OrdinalIgnoreCase);
+
+            // 先剔除历史写入的条目：旧版本把 *.github.com 这类通配符也写了进去，而 ProxyOverride 不支持通配符
+            var items = GetProxyOvride(settings)
+                .Where(item => configKeys.Contains(item) == false)
+                .ToList();
+
+            var added = 0;
+            foreach (var domain in configKeys.Where(IsLiteralHost))
             {
-                items.Add(item);
+                if (items.Any(item => string.Equals(item, domain, StringComparison.OrdinalIgnoreCase)) == false)
+                {
+                    items.Add(domain);
+                    added++;
+                }
             }
+
             SetProxyOvride(settings, items);
+
+            if (added > 0)
+            {
+                this.logger.LogInformation($"已把{added}个字面量域名加入代理例外列表（通配符规则无法表达，已跳过）");
+            }
         }
 
         /// <summary>
@@ -99,9 +116,25 @@ namespace PengGAP.PacketIntercept.Dns
                 return;
             }
 
-            var proxyOvride = GetProxyOvride(settings);
-            var items = proxyOvride.Except(this.options.Value.DomainConfigs.Keys);
+            var configKeys = new HashSet<string>(this.options.Value.DomainConfigs.Keys, StringComparer.OrdinalIgnoreCase);
+            var items = GetProxyOvride(settings)
+                .Where(item => configKeys.Contains(item) == false)
+                .ToList();
+
             SetProxyOvride(settings, items);
+        }
+
+        /// <summary>
+        /// 是否是字面量主机名
+        /// Windows 的 ProxyOverride 只接受字面量，不支持 *.example.com 这种通配符
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private static bool IsLiteralHost(string value)
+        {
+            return string.IsNullOrWhiteSpace(value) == false
+                && value.Contains('*') == false
+                && value.Contains('?') == false;
         }
 
         /// <summary>
@@ -150,9 +183,14 @@ namespace PengGAP.PacketIntercept.Dns
         /// </summary>
         /// <param name="registryKey"></param>
         /// <param name="items"></param>
-        private static void SetProxyOvride(RegistryKey registryKey, IEnumerable<string> items)
+        private static void SetProxyOvride(RegistryKey registryKey, IReadOnlyList<string> items)
         {
             var value = string.Join(PROXYOVERRIDE_SEPARATOR, items);
+            if (string.Equals(registryKey.GetValue(PROXYOVERRIDE_KEY)?.ToString(), value, StringComparison.Ordinal) == true)
+            {
+                return;
+            }
+
             registryKey.SetValue(PROXYOVERRIDE_KEY, value, RegistryValueKind.String);
             InternetSetOption(IntPtr.Zero, INTERNET_OPTION_PROXY_SETTINGS_CHANGED, IntPtr.Zero, 0);
             InternetSetOption(IntPtr.Zero, INTERNET_OPTION_REFRESH, IntPtr.Zero, 0);

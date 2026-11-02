@@ -1,5 +1,6 @@
-﻿using PengGAP.Configuration;
+using PengGAP.Configuration;
 using PengGAP.FlowAnalyze;
+using PengGAP.HttpServer.Certs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -128,7 +129,25 @@ namespace PengGAP
             app.MapGet("/flowStatistics", context =>
             {
                 var flowStatistics = context.RequestServices.GetRequiredService<IFlowAnalyzer>().GetFlowStatistics();
+
+                // 顺带把根证书状态带给界面，界面据此在托盘提示用户
+                var certService = context.RequestServices.GetRequiredService<CertService>();
+                flowStatistics = flowStatistics with
+                {
+                    CertTrusted = certService.IsTrusted,
+                    CertNotAfter = certService.CaNotAfter
+                };
+
                 var json = JsonSerializer.Serialize(flowStatistics, FlowStatisticsContext.Default.FlowStatistics);
+                return context.Response.WriteAsync(json);
+            });
+
+            app.MapGet("/certificates", context =>
+            {
+                var certService = context.RequestServices.GetRequiredService<CertService>();
+                var records = certService.GetRecords();
+                var json = JsonSerializer.Serialize(records, CertRecordContext.Default.CertRecordArray);
+                context.Response.ContentType = "application/json";
                 return context.Response.WriteAsync(json);
             });
         }

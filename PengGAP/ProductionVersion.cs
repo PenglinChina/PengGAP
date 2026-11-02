@@ -20,7 +20,7 @@ namespace PengGAP
         public static ProductionVersion? Current { get; } = productionVersion == null ? null : Parse(productionVersion);
 
         /// <summary>
-        /// 获取原始版本文本（保留前导零，例如 0.00.001）
+        /// 获取原始版本文本（保留前导零，例如 0.01.001）
         /// </summary>
         public static string? RawText => productionVersion;
          

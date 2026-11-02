@@ -87,6 +87,13 @@ namespace PengGAP.DomainResolve
                         yield return address;
                     }
                 }
+
+                // dnscrypt-proxy 已经给出结果时不再咨询兜底 DNS：
+                // 兜底源按设计仅在其不可用时才使用，而逐个等超时会把每次冷解析拖慢数秒
+                if (dns.Port != DNS_PORT && hashSet.Count > 0)
+                {
+                    yield break;
+                }
             }
         }
 
@@ -99,7 +106,6 @@ namespace PengGAP.DomainResolve
             var cryptDns = this.dnscryptProxy.LocalEndPoint;
             if (cryptDns != null)
             {
-                yield return cryptDns;
                 yield return cryptDns;
             }
 
@@ -171,7 +177,7 @@ namespace PengGAP.DomainResolve
             {
                 if (this.dnsLookupCache.TryGetValue<IList<IPAddress>>(key, out var value))
                 {
-                    return value;
+                    return value ?? Array.Empty<IPAddress>();
                 }
                 var result = await this.LookupCoreAsync(dns, endPoint, fastSort, cancellationToken);
                 return this.dnsLookupCache.Set(key, result.Addresses, result.TimeToLive);

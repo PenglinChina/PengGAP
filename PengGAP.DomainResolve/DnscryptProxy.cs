@@ -82,7 +82,7 @@ namespace PengGAP.DomainResolve
             }
             catch (Exception ex)
             {
-                this.logger.LogWarning($"{this.processName}启动失败：{ex.Message}");
+                this.logger.LogError($"{this.processName}启动失败：{ex.Message}；纯净DNS不可用，已回退到普通DNS");
             }
         }
 
@@ -105,7 +105,10 @@ namespace PengGAP.DomainResolve
             if (OperatingSystem.IsWindows() && Environment.UserInteractive == false)
             {
                 ServiceInstallUtil.StopAndDeleteService(this.serviceName);
-                ServiceInstallUtil.InstallAndStartService(this.serviceName, this.exeFilePath, ServiceStartType.SERVICE_DEMAND_START);
+                if (ServiceInstallUtil.InstallAndStartService(this.serviceName, this.exeFilePath, ServiceStartType.SERVICE_DEMAND_START) == false)
+                {
+                    this.logger.LogError($"无法把{this.processName}安装为Windows服务，纯净DNS不可用");
+                }
                 this.process = Process.GetProcessesByName(this.processName).FirstOrDefault(item => item.SessionId == 0);
             }
             else
@@ -113,12 +116,19 @@ namespace PengGAP.DomainResolve
                 this.process = StartDnscryptProxy();
             }
 
-            if (this.process != null)
+            if (this.process == null)
             {
-                this.LocalEndPoint = localEndPoint;
-                this.process.EnableRaisingEvents = true;
-                this.process.Exited += (s, e) => this.LocalEndPoint = null;
+                this.logger.LogError($"{this.processName}未能启动，纯净DNS不可用，已回退到普通DNS");
+                return;
             }
+
+            this.LocalEndPoint = localEndPoint;
+            this.process.EnableRaisingEvents = true;
+            this.process.Exited += (s, e) =>
+            {
+                this.LocalEndPoint = null;
+                this.logger.LogError($"{this.processName}已退出，纯净DNS不可用，已回退到普通DNS");
+            };
         }
 
         /// <summary>
@@ -204,7 +214,7 @@ namespace PengGAP.DomainResolve
             finally
             {
                 // 关闭作业句柄会连带结束其中残余的进程
-                if (OperatingSystem.IsWindows() == true)
+                if (OperatingSystem.IsWindows())
                 {
                     this.jobObject?.Dispose();
                     this.jobObject = null;
@@ -236,7 +246,7 @@ namespace PengGAP.DomainResolve
                 WindowStyle = ProcessWindowStyle.Hidden
             });
 
-            if (item != null && OperatingSystem.IsWindows() == true)
+            if (item != null && OperatingSystem.IsWindows())
             {
                 try
                 {

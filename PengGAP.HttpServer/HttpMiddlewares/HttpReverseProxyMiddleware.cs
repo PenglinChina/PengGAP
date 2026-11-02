@@ -1,4 +1,4 @@
-﻿using PengGAP.Configuration;
+using PengGAP.Configuration;
 using PengGAP.Http;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
@@ -144,18 +144,36 @@ namespace PengGAP.HttpServer.HttpMiddlewares
         /// <param name="context"></param>
         /// <param name="error"></param>
         /// <returns></returns>
-        private static async Task HandleErrorAsync(HttpContext context, ForwarderError error)
+        private async Task HandleErrorAsync(HttpContext context, ForwarderError error)
         {
             if (error == ForwarderError.None || context.Response.HasStarted)
             {
                 return;
             }
 
+            var exception = context.GetForwarderErrorFeature()?.Exception;
+            var message = $"转发失败 host={context.Request.Host.Value} path={context.Request.Path} error={error} message={exception?.Message}";
+
+            // 客户端主动取消（页面跳转、组件卸载）属于正常行为，
+            // 记成 Error 会把真正的故障淹没在噪音里
+            if (error == ForwarderError.RequestCanceled)
+            {
+                this.logger.LogDebug(message);
+            }
+            else
+            {
+                this.logger.LogError(message);
+                if (exception != null)
+                {
+                    this.logger.LogDebug(exception, $"转发失败的异常详情 host={context.Request.Host.Value}");
+                }
+            }
+
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
             var response = new ForwarderErrorResponse
             {
                 Error = error.ToString(),
-                Message = context.GetForwarderErrorFeature()?.Exception?.Message
+                Message = exception?.Message
             };
             await context.Response.WriteAsJsonAsync(response, ForwarderErrorContext.Default.ForwarderErrorResponse);
         }

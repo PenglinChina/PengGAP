@@ -1,6 +1,6 @@
 <Project>
 	<PropertyGroup>
-		<Version>0.00.001</Version>
+		<Version>0.01.001</Version>
 		<Product>PengGAP</Product>
 		<Nullable>enable</Nullable>
 		<TargetFramework>net8.0</TargetFramework>

@@ -1,4 +1,4 @@
-﻿using PengGAP.Configuration;
+using PengGAP.Configuration;
 using PengGAP.DomainResolve;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
@@ -63,7 +63,17 @@ namespace PengGAP.HttpServer.TcpMiddlewares
 
                     var task1 = connection.CopyToAsync(transport.Output, cancellationToken);
                     var task2 = transport.Input.CopyToAsync(connection, cancellationToken);
-                    await Task.WhenAny(task1, task2);
+
+                    // 必须等两个方向都结束：单方向完成（例如客户端半关闭）时，另一方向往往还有数据要发，
+                    // 用 WhenAny 会立即离开 using 作用域释放连接，导致上游响应被截断
+                    try
+                    {
+                        await Task.WhenAll(task1, task2);
+                    }
+                    catch (Exception) when (cancellationToken.IsCancellationRequested == true)
+                    {
+                        // 连接已关闭引起的取消或重置，属于正常收尾
+                    }
                 }
             }
         }

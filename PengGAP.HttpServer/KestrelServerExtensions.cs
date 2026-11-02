@@ -1,4 +1,4 @@
-﻿using PengGAP.Configuration;
+using PengGAP.Configuration;
 using PengGAP.HttpServer.Certs;
 using PengGAP.HttpServer.TcpMiddlewares;
 using PengGAP.HttpServer.TlsMiddlewares;
@@ -150,8 +150,8 @@ namespace PengGAP
         public static ListenOptions UseTls(this ListenOptions listen)
         {
             var certService = listen.ApplicationServices.GetRequiredService<CertService>();
-            certService.CreateCaCertIfNotExists();
-            certService.InstallAndTrustCaCert();
+            // 根CA的创建/轮换与信任安装只做一次，不再随每个监听端点重复执行
+            certService.EnsureCaCert();
             return listen.UseTls(domain => certService.GetOrCreateServerCert(domain));
         }
 

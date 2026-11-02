@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Controls;
 
 namespace PengGAP.UI
@@ -38,6 +39,8 @@ namespace PengGAP.UI
                 }
                 catch (Exception)
                 {
+                    // 接收失败后稍作退避：避免 socket 已失效时把线程空转满
+                    await Task.Delay(TimeSpan.FromSeconds(1d));
                 }
             }
         }

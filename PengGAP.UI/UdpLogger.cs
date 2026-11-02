@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -73,10 +73,20 @@ namespace PengGAP.UI
 
         private static void EndReceiveFrom(IAsyncResult ar)
         {
-            EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
-            var length = socket.EndReceiveFrom(ar, ref remoteEP);
             var taskCompletionSource = (TaskCompletionSource<int>)ar.AsyncState;
-            taskCompletionSource.TrySetResult(length);
+
+            // 回调里抛出的异常没有人接住，若不显式交给 Task，
+            // 等待方会永久挂起，日志面板从此再无任何输出
+            try
+            {
+                EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
+                var length = socket.EndReceiveFrom(ar, ref remoteEP);
+                taskCompletionSource.TrySetResult(length);
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.TrySetException(ex);
+            }
         }
     }
 }

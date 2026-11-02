@@ -1,4 +1,4 @@
-﻿using PengGAP.HttpServer.Certs;
+using PengGAP.HttpServer.Certs;
 using PengGAP.HttpServer.Certs.CaCertInstallers;
 using PengGAP.HttpServer.HttpMiddlewares;
 using PengGAP.HttpServer.TcpMiddlewares;
@@ -19,9 +19,12 @@ namespace PengGAP
         public static IServiceCollection AddReverseProxy(this IServiceCollection services)
         {
             return services
-                .AddMemoryCache()
+                // 叶证书与PAC脚本共用这个缓存，设置容量上限，避免被随机域名或Host刷爆
+                .AddMemoryCache(options => options.SizeLimit = 2048)
                 .AddHttpForwarder()
                 .AddSingleton<CertService>()
+                // 运行期间守护根CA：到期前自动轮换并重装信任
+                .AddHostedService<CertGuardHostedService>()
                 .AddSingleton<ICaCertInstaller, CaCertInstallerOfMacOS>()
                 .AddSingleton<ICaCertInstaller, CaCertInstallerOfWindows>()
                 .AddSingleton<ICaCertInstaller, CaCertInstallerOfLinuxRedHat>()

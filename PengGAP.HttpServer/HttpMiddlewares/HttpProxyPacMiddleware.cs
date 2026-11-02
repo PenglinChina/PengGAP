@@ -46,13 +46,14 @@ namespace PengGAP.HttpServer.HttpMiddlewares
             {
                 var proxyPac = this.cache.GetOrCreate($"proxyPac:{context.Request.Host.Value}", entry =>
                 {
+                    entry.SetSize(1);
                     entry.SetAbsoluteExpiration(cacheExpiration);
                     return this.CreateProxyPac(context.Request.Host);
                 });
 
                 context.Response.ContentType = "application/x-ns-proxy-autoconfig";
                 context.Response.Headers["Content-Disposition"] = "attachment;filename=proxy.pac";
-                await context.Response.WriteAsync(proxyPac);
+                await context.Response.WriteAsync(proxyPac ?? string.Empty);
             }
             else
             {
